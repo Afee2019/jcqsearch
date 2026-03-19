@@ -13,6 +13,13 @@ import (
 )
 
 var (
+	// 版本信息（通过 ldflags 注入）
+	Version   = "dev"
+	BuildTime = "unknown"
+	CommitSHA = "unknown"
+)
+
+var (
 	cfg  *config.Config
 	pool *pgxpool.Pool
 )
