@@ -1,0 +1,18 @@
+# 编译产物
+jcqsearch
+*.exe
+
+# 配置文件（含数据库密码）
+config.yaml
+
+# 分析脚本临时输出
+scripts/__pycache__/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

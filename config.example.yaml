@@ -1,0 +1,114 @@
+database:
+  host: localhost
+  port: 5432
+  dbname: jcqsearch
+  user: shawn
+  password: ""
+  sslmode: disable
+
+scan:
+  batch_size: 1000
+  concurrency: 4
+
+search:
+  default_limit: 20
+  similarity_threshold: 0.1
+
+ignore:
+  # 忽略的目录名（遍历时遇到同名目录跳过整个子树）
+  dirs:
+    # ── 版本控制 ──
+    - .git
+    - .svn
+    - .hg
+
+    # ── 包管理 / 依赖 ──
+    - node_modules
+    - bower_components
+    - vendor
+    - .venv
+    - venv
+    - env
+    - __pycache__
+    - .eggs
+    - Pods
+    - .pub-cache
+    - .dart_tool
+
+    # ── 构建产物 ──
+    - dist
+    - build
+    - target
+    - out
+    - output
+    - .next
+    - .nuxt
+    - .svelte-kit
+    - DerivedData
+    - cmake-build-debug
+    - cmake-build-release
+
+    # ── 缓存 ──
+    - .cache
+    - .tox
+    - .pytest_cache
+    - .mypy_cache
+    - .ruff_cache
+    - .eslintcache
+    - .parcel-cache
+    - .turbo
+    - .angular
+
+    # ── IDE / 编辑器 ──
+    - .idea
+    - .vscode
+    - .vs
+    - .settings
+    - .eclipse
+
+    # ── Java / Kotlin / Gradle ──
+    - .gradle
+    - .m2
+    - .ivy2
+
+    # ── Rust ──
+    - .cargo
+    - .rustup
+
+    # ── Ruby ──
+    - .gem
+    - .bundle
+
+    # ── macOS 系统 ──
+    - .Spotlight-V100
+    - .Trashes
+    - .fseventsd
+    - .TemporaryItems
+    - __MACOSX
+
+    # ── 容器 / 虚拟化 ──
+    - .docker
+    - .vagrant
+
+    # ── 测试覆盖率 ──
+    - coverage
+    - htmlcov
+    - .nyc_output
+
+  # 忽略的文件扩展名（小写，不含点号）
+  exts:
+    - pyc
+    - pyo
+    - o
+    - so
+    - dylib
+    - class
+    - dll
+    - exe
+
+  # 忽略的 glob 模式（对文件名进行匹配）
+  globs:
+    - .DS_Store
+    - Thumbs.db
+    - "*.min.js"
+    - "*.min.css"
