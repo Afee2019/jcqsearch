@@ -34,3 +34,19 @@ type IgnoreRule struct {
 	IsDefault bool
 	CreatedAt time.Time
 }
+
+type Tag struct {
+	ID          int
+	Name        string
+	Color       string
+	Description string
+	CreatedAt   time.Time
+}
+
+type FileTag struct {
+	FileID   int64
+	TagID    int
+	TaggedAt time.Time
+	Source   string // "manual", "rule", "import"
+	TagName  string // joined from tags table
+}

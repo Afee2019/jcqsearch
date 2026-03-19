@@ -39,6 +39,7 @@ func init() {
 	f.String("larger", "", "最小文件大小（如 10M, 1G）")
 	f.String("smaller", "", "最大文件大小")
 	f.StringP("recent", "r", "", "最近 N 天/小时（如 7d, 24h）")
+	f.StringP("tag", "g", "", "按标签筛选，多个用逗号分隔（AND）")
 	f.Bool("dirs-only", false, "仅搜索目录")
 	f.Bool("files-only", false, "仅搜索文件")
 	f.IntP("limit", "n", 0, "返回条数（默认 20）")
@@ -113,6 +114,16 @@ func runFind(cmd *cobra.Command, args []string) error {
 		params.MaxSize = size
 	}
 
+	// 标签筛选
+	if tagStr, _ := cmd.Flags().GetString("tag"); tagStr != "" {
+		for _, t := range strings.Split(tagStr, ",") {
+			t = strings.TrimSpace(t)
+			if t != "" {
+				params.Tags = append(params.Tags, t)
+			}
+		}
+	}
+
 	// 文件/目录筛选
 	params.DirsOnly, _ = cmd.Flags().GetBool("dirs-only")
 	params.FilesOnly, _ = cmd.Flags().GetBool("files-only")
@@ -126,7 +137,7 @@ func runFind(cmd *cobra.Command, args []string) error {
 	// 必须有至少一个搜索条件
 	if params.Keyword == "" && len(params.Exts) == 0 && params.After == nil &&
 		params.Before == nil && params.MinSize == 0 && params.MaxSize == 0 &&
-		params.Dir == "" && !params.DirsOnly {
+		params.Dir == "" && !params.DirsOnly && len(params.Tags) == 0 {
 		return fmt.Errorf("请提供搜索关键词或筛选条件")
 	}
 
@@ -165,10 +176,19 @@ func printResults(result *searcher.SearchResult, keyword string) {
 	dim := color.New(color.Faint).SprintFunc()
 	bold := color.New(color.Bold).SprintFunc()
 	red := color.New(color.FgRed, color.Bold).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+
+	// 检查是否有标签需要展示
+	hasTags := len(result.FileTags) > 0
 
 	fmt.Println()
-	fmt.Printf("  %s  %-42s %-10s %-18s %s\n",
-		dim("#"), dim("名称"), dim("大小"), dim("修改时间"), dim("路径"))
+	if hasTags {
+		fmt.Printf("  %s  %-38s %-10s %-18s %-18s %s\n",
+			dim("#"), dim("名称"), dim("大小"), dim("修改时间"), dim("标签"), dim("路径"))
+	} else {
+		fmt.Printf("  %s  %-42s %-10s %-18s %s\n",
+			dim("#"), dim("名称"), dim("大小"), dim("修改时间"), dim("路径"))
+	}
 	fmt.Println()
 
 	homeDir, _ := os.UserHomeDir()
@@ -195,8 +215,17 @@ func printResults(result *searcher.SearchResult, keyword string) {
 			dir = "~" + dir[len(homeDir):]
 		}
 
-		fmt.Printf("  %-3d  %-42s %-10s %-18s %s\n",
-			i+1, displayName, sizeStr, timeStr, dim(dir))
+		if hasTags {
+			tagStr := ""
+			if tags, ok := result.FileTags[f.ID]; ok {
+				tagStr = yellow(strings.Join(tags, " "))
+			}
+			fmt.Printf("  %-3d  %-38s %-10s %-18s %-18s %s\n",
+				i+1, displayName, sizeStr, timeStr, tagStr, dim(dir))
+		} else {
+			fmt.Printf("  %-3d  %-42s %-10s %-18s %s\n",
+				i+1, displayName, sizeStr, timeStr, dim(dir))
+		}
 	}
 
 	fmt.Printf("\n  共 %s 条结果（耗时 %s）\n\n",

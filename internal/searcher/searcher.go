@@ -19,6 +19,7 @@ type SearchParams struct {
 	Dir       string     // 限定目录前缀
 	MinSize   int64      // 最小文件大小（字节）
 	MaxSize   int64      // 最大文件大小（字节）
+	Tags      []string   // 标签筛选（AND）
 	DirsOnly  bool
 	FilesOnly bool
 	Limit     int
@@ -28,6 +29,7 @@ type SearchResult struct {
 	Entries  []model.FileEntry
 	Total    int
 	Duration time.Duration
+	FileTags map[int64][]string // file_id -> tag names
 }
 
 type Searcher struct {
@@ -112,6 +114,19 @@ func (s *Searcher) Search(ctx context.Context, params SearchParams) (*SearchResu
 		argIdx++
 	}
 
+	// 标签筛选
+	if len(params.Tags) > 0 {
+		conditions = append(conditions, fmt.Sprintf(`id IN (
+			SELECT ft.file_id FROM file_tags ft
+			JOIN tags t ON t.id = ft.tag_id
+			WHERE t.name = ANY($%d)
+			GROUP BY ft.file_id
+			HAVING COUNT(DISTINCT t.id) = $%d
+		)`, argIdx, argIdx+1))
+		args = append(args, params.Tags, len(params.Tags))
+		argIdx += 2
+	}
+
 	// 文件/目录筛选
 	if params.FilesOnly {
 		conditions = append(conditions, "is_dir = false")
@@ -120,7 +135,7 @@ func (s *Searcher) Search(ctx context.Context, params SearchParams) (*SearchResu
 	}
 
 	// 构造 SQL
-	query := "SELECT path, dir, name, stem, ext, is_dir, size, mod_time FROM files"
+	query := "SELECT id, path, dir, name, stem, ext, is_dir, size, mod_time FROM files"
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
@@ -146,7 +161,7 @@ func (s *Searcher) Search(ctx context.Context, params SearchParams) (*SearchResu
 	var entries []model.FileEntry
 	for rows.Next() {
 		var f model.FileEntry
-		if err := rows.Scan(&f.Path, &f.Dir, &f.Name, &f.Stem, &f.Ext, &f.IsDir, &f.Size, &f.ModTime); err != nil {
+		if err := rows.Scan(&f.ID, &f.Path, &f.Dir, &f.Name, &f.Stem, &f.Ext, &f.IsDir, &f.Size, &f.ModTime); err != nil {
 			return nil, fmt.Errorf("解析查询结果失败: %w", err)
 		}
 		entries = append(entries, f)
@@ -155,9 +170,47 @@ func (s *Searcher) Search(ctx context.Context, params SearchParams) (*SearchResu
 		return nil, err
 	}
 
+	// 加载标签
+	fileTags, _ := s.loadFileTags(ctx, entries)
+
 	return &SearchResult{
 		Entries:  entries,
 		Total:    len(entries),
 		Duration: time.Since(start),
+		FileTags: fileTags,
 	}, nil
+}
+
+// loadFileTags 批量加载文件的标签
+func (s *Searcher) loadFileTags(ctx context.Context, entries []model.FileEntry) (map[int64][]string, error) {
+	if len(entries) == 0 {
+		return nil, nil
+	}
+
+	ids := make([]int64, len(entries))
+	for i, e := range entries {
+		ids[i] = e.ID
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT ft.file_id, t.name
+		FROM file_tags ft
+		JOIN tags t ON t.id = ft.tag_id
+		WHERE ft.file_id = ANY($1)
+		ORDER BY t.name`, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int64][]string)
+	for rows.Next() {
+		var fileID int64
+		var tagName string
+		if err := rows.Scan(&fileID, &tagName); err != nil {
+			return nil, err
+		}
+		result[fileID] = append(result[fileID], tagName)
+	}
+	return result, rows.Err()
 }

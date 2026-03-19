@@ -80,11 +80,17 @@ ignore:
     - .bundle
 
     # ── macOS 系统 ──
+    - Library
+    - Movies
+    - Music
     - .Spotlight-V100
     - .Trashes
     - .fseventsd
     - .TemporaryItems
     - __MACOSX
+
+    # ── AI 模型 ──
+    - .ollama
 
     # ── 容器 / 虚拟化 ──
     - .docker
@@ -112,3 +118,43 @@ ignore:
     - Thumbs.db
     - "*.min.js"
     - "*.min.css"
+
+auto_tag:
+  rules:
+    # ── 按扩展名分类 ──
+    - match:
+        ext: [pdf, docx, doc, odt, rtf, txt]
+      tags: [文档]
+
+    - match:
+        ext: [pptx, ppt, key]
+      tags: [演示文稿]
+
+    - match:
+        ext: [xlsx, xls, csv]
+      tags: [表格]
+
+    - match:
+        ext: [jpg, jpeg, png, gif, webp, svg, bmp, tiff]
+      tags: [图片]
+
+    - match:
+        ext: [mp4, mkv, avi, flv, mov, wmv, webm]
+      tags: [视频]
+
+    - match:
+        ext: [mp3, flac, wav, aac, ogg, m4a]
+      tags: [音频]
+
+    - match:
+        ext: [go, py, js, ts, rs, java, c, cpp, rb, sh, swift, kt]
+      tags: [代码]
+
+    - match:
+        ext: [zip, tar, gz, bz2, 7z, rar, xz]
+      tags: [压缩包]
+
+    # ── 按文件大小 ──
+    - match:
+        larger: 100M
+      tags: [大文件]

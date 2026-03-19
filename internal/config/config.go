@@ -12,6 +12,24 @@ type Config struct {
 	Scan     ScanConfig     `mapstructure:"scan"`
 	Search   SearchConfig   `mapstructure:"search"`
 	Ignore   IgnoreConfig   `mapstructure:"ignore"`
+	AutoTag  AutoTagConfig  `mapstructure:"auto_tag"`
+}
+
+type AutoTagRule struct {
+	Match AutoTagMatch `mapstructure:"match"`
+	Tags  []string     `mapstructure:"tags"`
+}
+
+type AutoTagMatch struct {
+	Ext     []string `mapstructure:"ext"`
+	Dir     string   `mapstructure:"dir"`
+	Name    string   `mapstructure:"name"`
+	Larger  string   `mapstructure:"larger"`
+	Smaller string   `mapstructure:"smaller"`
+}
+
+type AutoTagConfig struct {
+	Rules []AutoTagRule `mapstructure:"rules"`
 }
 
 type IgnoreConfig struct {
@@ -47,8 +65,8 @@ type SearchConfig struct {
 func Load() (*Config, error) {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
+	viper.AddConfigPath("$HOME/.jcqsearch")
 	viper.AddConfigPath(".")
-	viper.AddConfigPath("$HOME/.config/jcqsearch")
 
 	viper.SetEnvPrefix("JCQSEARCH")
 	viper.AutomaticEnv()
