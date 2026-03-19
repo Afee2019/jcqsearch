@@ -219,13 +219,37 @@ func (s *Scanner) upsertBatch(ctx context.Context, entries []model.FileEntry) er
 }
 
 func (s *Scanner) cleanupDeleted(ctx context.Context, scanPathID int, scanTime time.Time) (int64, error) {
-	tag, err := s.pool.Exec(ctx,
-		"DELETE FROM files WHERE scan_path_id = $1 AND scanned_at < $2",
+	// 无标签的过期文件：直接删除
+	tag, err := s.pool.Exec(ctx, `
+		DELETE FROM files f
+		WHERE f.scan_path_id = $1
+		  AND f.scanned_at < $2
+		  AND NOT EXISTS (SELECT 1 FROM file_tags ft WHERE ft.file_id = f.id)`,
 		scanPathID, scanTime)
 	if err != nil {
 		return 0, err
 	}
-	return tag.RowsAffected(), nil
+	deleted := tag.RowsAffected()
+
+	// 有标签的过期文件：标记 missing_since，保留供 repair 使用
+	marked, err := s.pool.Exec(ctx, `
+		UPDATE files f
+		SET missing_since = now()
+		WHERE f.scan_path_id = $1
+		  AND f.scanned_at < $2
+		  AND f.missing_since IS NULL
+		  AND EXISTS (SELECT 1 FROM file_tags ft WHERE ft.file_id = f.id)`,
+		scanPathID, scanTime)
+	if err != nil {
+		return deleted, err
+	}
+	markedCount := marked.RowsAffected()
+
+	if markedCount > 0 {
+		fmt.Fprintf(os.Stderr, "  标记 %d 个有标签的丢失文件（可用 tag repair 修复）\n", markedCount)
+	}
+
+	return deleted, nil
 }
 
 func (s *Scanner) loadScanPaths(ctx context.Context) ([]model.ScanPath, error) {
